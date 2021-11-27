@@ -9,20 +9,25 @@
 //! sources supported by the Solana CLI. Many other functions here are
 //! variations on, or delegate to, `signer_from_path`.
 
+#[cfg(feature = "solana-remote-wallet")]
 use {
     crate::{
-        input_parsers::{pubkeys_sigs_of, STDOUT_OUTFILE_TOKEN},
+        input_parsers::pubkeys_sigs_of,
         offline::{SIGNER_ARG, SIGN_ONLY_ARG},
-        ArgConstant,
     },
-    bip39::{Language, Mnemonic, Seed},
-    clap::ArgMatches,
-    rpassword::prompt_password_stderr,
     solana_remote_wallet::{
         locator::{Locator as RemoteWalletLocator, LocatorError as RemoteWalletLocatorError},
         remote_keypair::generate_remote_keypair,
         remote_wallet::{maybe_wallet_manager, RemoteWalletError, RemoteWalletManager},
     },
+    solana_sdk::signature::NullSigner,
+    std::{ops::Deref, sync::Arc},
+};
+use {
+    crate::{input_parsers::STDOUT_OUTFILE_TOKEN, ArgConstant},
+    bip39::{Language, Mnemonic, Seed},
+    clap::ArgMatches,
+    rpassword::prompt_password_stderr,
     solana_sdk::{
         derivation_path::{DerivationPath, DerivationPathError},
         hash::Hash,
@@ -31,7 +36,7 @@ use {
         signature::{
             generate_seed_from_seed_phrase_and_passphrase, keypair_from_seed,
             keypair_from_seed_and_derivation_path, keypair_from_seed_phrase_and_passphrase,
-            read_keypair, read_keypair_file, Keypair, NullSigner, Presigner, Signature, Signer,
+            read_keypair, read_keypair_file, Keypair, Presigner, Signature, Signer,
         },
     },
     std::{
@@ -39,10 +44,8 @@ use {
         convert::TryFrom,
         error,
         io::{stdin, stdout, Write},
-        ops::Deref,
         process::exit,
         str::FromStr,
-        sync::Arc,
     },
     thiserror::Error,
 };
@@ -163,6 +166,7 @@ impl DefaultSigner {
         }
     }
 
+    #[cfg(feature = "solana-remote-wallet")]
     fn path(&self) -> Result<&str, Box<dyn std::error::Error>> {
         if !self.is_path_checked.borrow().deref() {
             parse_signer_source(&self.path)
@@ -238,6 +242,7 @@ impl DefaultSigner {
     /// )?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
+    #[cfg(feature = "solana-remote-wallet")]
     pub fn generate_unique_signers(
         &self,
         bulk_signers: Vec<Option<Box<dyn Signer>>>,
@@ -301,6 +306,7 @@ impl DefaultSigner {
     /// )?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
+    #[cfg(feature = "solana-remote-wallet")]
     pub fn signer_from_path(
         &self,
         matches: &ArgMatches,
@@ -354,6 +360,7 @@ impl DefaultSigner {
     /// )?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
+    #[cfg(feature = "solana_remote-wallet")]
     pub fn signer_from_path_with_config(
         &self,
         matches: &ArgMatches,
@@ -396,6 +403,7 @@ impl SignerSource {
 
 const SIGNER_SOURCE_PROMPT: &str = "prompt";
 const SIGNER_SOURCE_FILEPATH: &str = "file";
+#[cfg(feature = "solana-remote-wallet")]
 const SIGNER_SOURCE_USB: &str = "usb";
 const SIGNER_SOURCE_STDIN: &str = "stdin";
 const SIGNER_SOURCE_PUBKEY: &str = "pubkey";
@@ -403,6 +411,7 @@ const SIGNER_SOURCE_PUBKEY: &str = "pubkey";
 pub(crate) enum SignerSourceKind {
     Prompt,
     Filepath(String),
+    #[cfg(feature = "solana-remote-wallet")]
     Usb(RemoteWalletLocator),
     Stdin,
     Pubkey(Pubkey),
@@ -413,6 +422,7 @@ impl AsRef<str> for SignerSourceKind {
         match self {
             Self::Prompt => SIGNER_SOURCE_PROMPT,
             Self::Filepath(_) => SIGNER_SOURCE_FILEPATH,
+            #[cfg(feature = "solana-remote-wallet")]
             Self::Usb(_) => SIGNER_SOURCE_USB,
             Self::Stdin => SIGNER_SOURCE_STDIN,
             Self::Pubkey(_) => SIGNER_SOURCE_PUBKEY,
@@ -431,6 +441,7 @@ impl std::fmt::Debug for SignerSourceKind {
 pub(crate) enum SignerSourceError {
     #[error("unrecognized signer source")]
     UnrecognizedSource,
+    #[cfg(feature = "solana-remote-wallet")]
     #[error(transparent)]
     RemoteWalletLocatorError(#[from] RemoteWalletLocatorError),
     #[error(transparent)]
@@ -476,6 +487,7 @@ pub(crate) fn parse_signer_source<S: AsRef<str>>(
                     SIGNER_SOURCE_FILEPATH => Ok(SignerSource::new(SignerSourceKind::Filepath(
                         uri.path().to_string(),
                     ))),
+                    #[cfg(feature = "solana-remote-wallet")]
                     SIGNER_SOURCE_USB => Ok(SignerSource {
                         kind: SignerSourceKind::Usb(RemoteWalletLocator::new_from_uri(&uri)?),
                         derivation_path: DerivationPath::from_uri_key_query(&uri)?,
@@ -682,6 +694,7 @@ pub struct SignerFromPathConfig {
 /// )?;
 /// # Ok::<(), Box<dyn std::error::Error>>(())
 /// ```
+#[cfg(feature = "solana-remote-wallet")]
 pub fn signer_from_path(
     matches: &ArgMatches,
     path: &str,
@@ -749,6 +762,7 @@ pub fn signer_from_path(
 /// )?;
 /// # Ok::<(), Box<dyn std::error::Error>>(())
 /// ```
+#[cfg(feature = "solana-remote-wallet")]
 pub fn signer_from_path_with_config(
     matches: &ArgMatches,
     path: &str,
@@ -856,6 +870,7 @@ pub fn signer_from_path_with_config(
 /// )?;
 /// # Ok::<(), Box<dyn std::error::Error>>(())
 /// ```
+#[cfg(feature = "solana-remote-wallet")]
 pub fn pubkey_from_path(
     matches: &ArgMatches,
     path: &str,
@@ -869,6 +884,7 @@ pub fn pubkey_from_path(
     }
 }
 
+#[cfg(feature = "solana-remote-wallet")]
 pub fn resolve_signer_from_path(
     matches: &ArgMatches,
     path: &str,
@@ -1124,13 +1140,16 @@ fn sanitize_seed_phrase(seed_phrase: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::offline::OfflineArgs;
-    use clap::{value_t_or_exit, App, Arg};
-    use solana_remote_wallet::locator::Manufacturer;
-    use solana_remote_wallet::remote_wallet::initialize_wallet_manager;
-    use solana_sdk::signer::keypair::write_keypair_file;
     use solana_sdk::system_instruction;
-    use tempfile::{NamedTempFile, TempDir};
+    use tempfile::NamedTempFile;
+    #[cfg(feature = "solana-remote-wallet")]
+    use {
+        crate::offline::OfflineArgs,
+        clap::{value_t_or_exit, App, Arg},
+        solana_remote_wallet::{locator::Manufacturer, remote_wallet::initialize_wallet_manager},
+        solana_sdk::signer::keypair::write_keypair_file,
+        tempfile::TempDir,
+    };
 
     #[test]
     fn test_sanitize_seed_phrase() {
@@ -1235,7 +1254,34 @@ mod tests {
                 legacy: false,
             } if p == relative_path_str)
         );
+        assert!(
+            matches!(parse_signer_source(&format!("file:{}", absolute_path_str)).unwrap(), SignerSource {
+                kind: SignerSourceKind::Filepath(p),
+                derivation_path: None,
+                legacy: false,
+            } if p == absolute_path_str)
+        );
+        let prompt = "prompt:".to_string();
+        assert!(matches!(
+            parse_signer_source(&prompt).unwrap(),
+            SignerSource {
+                kind: SignerSourceKind::Prompt,
+                derivation_path: None,
+                legacy: false,
+            }
+        ));
+        assert!(
+            matches!(parse_signer_source(&format!("file:{}", relative_path_str)).unwrap(), SignerSource {
+                kind: SignerSourceKind::Filepath(p),
+                derivation_path: None,
+                legacy: false,
+            } if p == relative_path_str)
+        );
+    }
 
+    #[cfg(feature = "solana-remote-wallet")]
+    #[test]
+    fn test_parse_signer_source_remote_wallet() {
         let usb = "usb://ledger".to_string();
         let expected_locator = RemoteWalletLocator {
             manufacturer: Manufacturer::Ledger,
@@ -1246,6 +1292,7 @@ mod tests {
                 derivation_path: None,
                 legacy: false,
             } if u == expected_locator));
+
         let usb = "usb://ledger?key=0/0".to_string();
         let expected_locator = RemoteWalletLocator {
             manufacturer: Manufacturer::Ledger,
@@ -1264,32 +1311,9 @@ mod tests {
             parse_signer_source(&junk),
             Err(SignerSourceError::IoError(_))
         ));
-
-        let prompt = "prompt:".to_string();
-        assert!(matches!(
-            parse_signer_source(&prompt).unwrap(),
-            SignerSource {
-                kind: SignerSourceKind::Prompt,
-                derivation_path: None,
-                legacy: false,
-            }
-        ));
-        assert!(
-            matches!(parse_signer_source(&format!("file:{}", absolute_path_str)).unwrap(), SignerSource {
-                kind: SignerSourceKind::Filepath(p),
-                derivation_path: None,
-                legacy: false,
-            } if p == absolute_path_str)
-        );
-        assert!(
-            matches!(parse_signer_source(&format!("file:{}", relative_path_str)).unwrap(), SignerSource {
-                kind: SignerSourceKind::Filepath(p),
-                derivation_path: None,
-                legacy: false,
-            } if p == relative_path_str)
-        );
     }
 
+    #[cfg(feature = "solana-remote-wallet")]
     #[test]
     fn signer_from_path_with_file() -> Result<(), Box<dyn std::error::Error>> {
         let dir = TempDir::new()?;
