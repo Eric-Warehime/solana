@@ -1,11 +1,9 @@
 use {
     crate::keypair::{
-        keypair_from_seed_phrase, pubkey_from_path, resolve_signer_from_path, signer_from_path,
-        ASK_KEYWORD, SKIP_SEED_PHRASE_VALIDATION_ARG,
+        keypair_from_seed_phrase, ASK_KEYWORD, SKIP_SEED_PHRASE_VALIDATION_ARG,
     },
     chrono::DateTime,
     clap::ArgMatches,
-    solana_remote_wallet::remote_wallet::RemoteWalletManager,
     solana_sdk::{
         clock::UnixTimestamp,
         commitment_config::CommitmentConfig,
@@ -14,7 +12,15 @@ use {
         pubkey::Pubkey,
         signature::{read_keypair_file, Keypair, Signature, Signer},
     },
-    std::{str::FromStr, sync::Arc},
+    std::str::FromStr,
+};
+#[cfg(feature = "solana-remote-wallet")]
+use {
+    crate::keypair::{
+        pubkey_from_path, resolve_signer_from_path, signer_from_path,
+    },
+    solana_remote_wallet::remote_wallet::RemoteWalletManager,
+    std::sync::Arc,
 };
 
 // Sentinel value used to indicate to write to screen instead of file
@@ -118,6 +124,7 @@ pub fn pubkeys_sigs_of(matches: &ArgMatches<'_>, name: &str) -> Option<Vec<(Pubk
     })
 }
 
+#[cfg(feature = "solana-remote-wallet")]
 // Return a signer from matches at `name`
 #[allow(clippy::type_complexity)]
 pub fn signer_of(
@@ -134,6 +141,7 @@ pub fn signer_of(
     }
 }
 
+#[cfg(feature = "solana-remote-wallet")]
 pub fn pubkey_of_signer(
     matches: &ArgMatches<'_>,
     name: &str,
@@ -151,6 +159,7 @@ pub fn pubkey_of_signer(
     }
 }
 
+#[cfg(feature = "solana-remote-wallet")]
 pub fn pubkeys_of_multiple_signers(
     matches: &ArgMatches<'_>,
     name: &str,
@@ -167,6 +176,7 @@ pub fn pubkeys_of_multiple_signers(
     }
 }
 
+#[cfg(feature = "solana-remote-wallet")]
 pub fn resolve_signer(
     matches: &ArgMatches<'_>,
     name: &str,
